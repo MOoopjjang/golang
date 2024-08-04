@@ -4,14 +4,22 @@ import (
 	"fmt"
 	"goproject/demo/pb/manager"
 	"goproject/demo/pb/pbtype"
+
+	"goproject/demo/pb/rollback"
+	"goproject/demo/pb/syncmanager"
 )
 
 func main() {
 	var pbm pbtype.PhoneBook
-	// pbm.Data = make([]pbtype.User, 100, 100)
-	pbm.Data = []pbtype.User{}
+	// slice type으로 생성
+	pbm.Data = make([]pbtype.User, 100, 100)
 
-	manager.Cache.Initialzie()
+	rollback.Initialzie()
+
+	/** go */
+	syncmanager.Sm().Initialzie()
+	syncmanager.Sm().Add(1)
+	go rollback.Add()
 
 	manager.ReadFile("data.json", &pbm)
 	for {
@@ -33,7 +41,8 @@ func main() {
 
 			switch nSelect {
 			case 1:
-				manager.Add(&pbm, &manager.Cache)
+				// manager.Add(&pbm, &manager.Cache)
+				manager.Add(&pbm)
 			case 2:
 				manager.Del(&pbm)
 			case 3:
@@ -41,9 +50,9 @@ func main() {
 			case 4:
 				manager.Search(&pbm)
 			case 5:
-				manager.Display(&pbm, &manager.Cache)
+				manager.Display(&pbm)
 			case 6:
-				manager.PbRollback(&pbm, &manager.Cache)
+				manager.PbRollback(&pbm)
 			default:
 				fmt.Println("Program end")
 				manager.SaveFile("data.json", &pbm)
@@ -56,4 +65,6 @@ func main() {
 			}
 		}
 	}
+
+	syncmanager.Sm().CloseAndWait()
 }

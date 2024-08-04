@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"goproject/demo/pb/pbtype"
+	"goproject/demo/pb/rollback"
+	"goproject/demo/pb/syncmanager"
 	"io"
 	"os"
 )
 
+/*
 func Add(m *pbtype.PhoneBook, rm *RollbackMgr) {
 	var user pbtype.User
 	fmt.Println("------------------------------------------")
@@ -21,10 +24,56 @@ func Add(m *pbtype.PhoneBook, rm *RollbackMgr) {
 
 	m.Data = append(m.Data, user)
 	(*m).Count++
-
-	// fmt.Println("aaaaa")
-	// clip
 	(*rm).Add(&user)
+}
+
+func Display(m *pbtype.PhoneBook, rm *RollbackMgr) {
+
+	if (*m).Count == 0 {
+		fmt.Println("데이타가 없습니다")
+	} else {
+		for i := 0; i < (*m).Count; i++ {
+			fmt.Printf("[%d] : Name : %s , Number: %s , Address : %s \n", i+1, (*m).Data[i].Name, (*m).Data[i].Number, (*m).Data[i].Address)
+		}
+
+		fmt.Println("--------- Clip Board -------------")
+		(*rm).Print()
+	}
+}
+
+*/
+
+func Add(m *pbtype.PhoneBook) {
+	var user pbtype.User
+	fmt.Println("------------------------------------------")
+	fmt.Println("1. 이름")
+	fmt.Scan(&user.Name)
+	fmt.Println("2. 전화번호")
+	fmt.Scan(&user.Number)
+	fmt.Println("3. 주소")
+	fmt.Scan(&user.Address)
+	fmt.Println("------------------------------------------")
+
+	(*m).Data[(*m).Count] = user
+	(*m).Count++
+
+	/** input channel */
+	syncmanager.Sm().Ch() <- &user
+
+}
+
+func Display(m *pbtype.PhoneBook) {
+
+	if (*m).Count == 0 {
+		fmt.Println("데이타가 없습니다")
+	} else {
+		for i := 0; i < (*m).Count; i++ {
+			fmt.Printf("[%d] : Name : %s , Number: %s , Address : %s \n", i+1, (*m).Data[i].Name, (*m).Data[i].Number, (*m).Data[i].Address)
+		}
+
+		fmt.Println("--------- Clip Board -------------")
+		rollback.Cache().Print()
+	}
 }
 
 func Del(m *pbtype.PhoneBook) bool {
@@ -102,20 +151,6 @@ func Edit(m *pbtype.PhoneBook) {
 
 }
 
-func Display(m *pbtype.PhoneBook, rm *RollbackMgr) {
-
-	if (*m).Count == 0 {
-		fmt.Println("데이타가 없습니다")
-	} else {
-		for i := 0; i < (*m).Count; i++ {
-			fmt.Printf("[%d] : Name : %s , Number: %s , Address : %s \n", i+1, (*m).Data[i].Name, (*m).Data[i].Number, (*m).Data[i].Address)
-		}
-
-		fmt.Println("--------- Clip Board -------------")
-		(*rm).Print()
-	}
-}
-
 func Search(m *pbtype.PhoneBook) {
 	var cnt int = (*m).Count
 	if cnt == 0 {
@@ -141,7 +176,8 @@ func Search(m *pbtype.PhoneBook) {
 		}
 
 		fmt.Println("------------ clip info ----------------")
-		Cache.Print()
+		// Cache.Print()
+		rollback.Cache().Print()
 
 	}
 }
@@ -149,7 +185,6 @@ func Search(m *pbtype.PhoneBook) {
 func search(m *pbtype.PhoneBook, searchName string) (bool, string, int) {
 
 	// sort
-	
 
 	if (*m).Count == 0 {
 		return false, "저장된 사용자가 없습니다", -1
@@ -200,14 +235,14 @@ func SaveFile(path string, m *pbtype.PhoneBook) {
 
 }
 
-func PbRollback(m *pbtype.PhoneBook, rm *RollbackMgr) error {
+func PbRollback(m *pbtype.PhoneBook) error {
 
-	rmCount := (*rm).Count
+	rmCount := rollback.Cache().Count
 	if rmCount == 0 {
 		return fmt.Errorf("클립보드가 비었습니다.")
 	}
 
-	if ru, err := (*rm).Rollback(); err == nil {
+	if ru, err := rollback.Cache().Rollback(); err == nil {
 		fmt.Println("복구될 정보 >>>", ru.ToString())
 
 		m.Data = append(m.Data, *ru)
@@ -217,123 +252,4 @@ func PbRollback(m *pbtype.PhoneBook, rm *RollbackMgr) error {
 		return fmt.Errorf("복구에 실패하였습니다")
 	}
 
-}
-
-//--------------------------------------------------------------------
-
-type Node struct {
-	Data *pbtype.User
-	Next *Node
-	Prev *Node
-}
-
-type RollbackMgr struct {
-	Count int
-	CNode Node
-}
-
-var Cache RollbackMgr = RollbackMgr{0, Node{nil, nil, nil}}
-
-// func GetCache() *RollbackMgr {
-// 	return &Cache
-// }
-
-func (rm *RollbackMgr) Initialzie() {
-	(*rm).Count = 0
-	(*rm).CNode = Node{nil, nil, nil}
-}
-
-func (rm *RollbackMgr) Add(u *pbtype.User) {
-	fmt.Println(">>> Add >>", (*u).ToString())
-
-	count := (*rm).Count
-
-	switch count {
-	case 0:
-		(*rm).CNode = Node{u, nil, nil}
-		(*rm).Count++
-	case 10:
-		//가장오래된 데이타 삭제...
-		fNode := firstNode(rm)
-		(*rm).CNode = *fNode.Next
-		(*rm).CNode.Prev = nil
-
-		fNode = &Node{}
-		// fNode.Next = nil
-		// fNode.Prev = nil
-
-		//새로운 데이타 마지막에 추가
-		lNode := lastNode(rm)
-		nNode := &Node{u, nil, lNode}
-		lNode.Next = nNode
-
-		// (*rm).Count++
-	default:
-		//새로운 데이타 마지막에 추가
-		lNode := lastNode(rm)
-		nNode := &Node{u, nil, lNode}
-		lNode.Next = nNode
-
-		(*rm).Count++
-	}
-
-	// fmt.Println("count >>", (*rm).Count)
-}
-
-func (rm *RollbackMgr) Rollback() (*pbtype.User, error) {
-
-	if (*rm).Count == 0 {
-		return nil, fmt.Errorf("01")
-	}
-
-	lNode := lastNode(rm)
-	// dNode := Node{lNode.Data, nil, nil}
-	lNode.Prev.Next = nil
-
-	(*rm).Count--
-	// fmt.Println(lNode.Data)
-	return lNode.Data, nil
-
-}
-
-func (rm *RollbackMgr) Print() {
-	if (*rm).Count > 0 {
-		tNode := &(*rm).CNode
-		// fmt.Println("Print>>", tNode.Data.ToString())
-		// fmt.Println("Print2>>", tNode.Next)
-		for {
-			if tNode.Next == nil {
-				fmt.Println(tNode.Data.ToString())
-				return
-			}
-
-			fmt.Println(tNode.Data.ToString())
-
-			tNode = tNode.Next
-		}
-	}
-}
-
-func lastNode(rm *RollbackMgr) *Node {
-	fNode := &rm.CNode
-	for {
-		if fNode.Next == nil {
-			return fNode
-		} else {
-			fNode = fNode.Next
-		}
-	}
-}
-
-func firstNode(rm *RollbackMgr) *Node {
-	fNode := &rm.CNode
-	for {
-
-		if fNode.Prev == nil {
-			// fmt.Println("firstNode()>>>", fNode.Data.ToString())
-			return fNode
-		} else {
-			fNode = fNode.Prev
-		}
-	}
 }
