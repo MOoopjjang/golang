@@ -12,7 +12,7 @@ import (
 func main() {
 	var pbm pbtype.PhoneBook
 	// slice type으로 생성
-	pbm.Data = make([]pbtype.User, 100, 100)
+	pbm.Data = []pbtype.User{}
 
 	rollback.Initialzie()
 

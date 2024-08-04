@@ -54,8 +54,8 @@ func Add(m *pbtype.PhoneBook) {
 	fmt.Scan(&user.Address)
 	fmt.Println("------------------------------------------")
 
-	(*m).Data[(*m).Count] = user
-	(*m).Count++
+	(*m).Data = append(m.Data, user)
+	(*m).Count = len((*m).Data)
 
 	/** input channel */
 	syncmanager.Sm().Ch() <- &user
