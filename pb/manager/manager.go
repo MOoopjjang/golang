@@ -10,39 +10,6 @@ import (
 	"os"
 )
 
-/*
-func Add(m *pbtype.PhoneBook, rm *RollbackMgr) {
-	var user pbtype.User
-	fmt.Println("------------------------------------------")
-	fmt.Println("1. 이름")
-	fmt.Scan(&user.Name)
-	fmt.Println("2. 전화번호")
-	fmt.Scan(&user.Number)
-	fmt.Println("3. 주소")
-	fmt.Scan(&user.Address)
-	fmt.Println("------------------------------------------")
-
-	m.Data = append(m.Data, user)
-	(*m).Count++
-	(*rm).Add(&user)
-}
-
-func Display(m *pbtype.PhoneBook, rm *RollbackMgr) {
-
-	if (*m).Count == 0 {
-		fmt.Println("데이타가 없습니다")
-	} else {
-		for i := 0; i < (*m).Count; i++ {
-			fmt.Printf("[%d] : Name : %s , Number: %s , Address : %s \n", i+1, (*m).Data[i].Name, (*m).Data[i].Number, (*m).Data[i].Address)
-		}
-
-		fmt.Println("--------- Clip Board -------------")
-		(*rm).Print()
-	}
-}
-
-*/
-
 func Add(m *pbtype.PhoneBook) {
 	var user pbtype.User
 	fmt.Println("------------------------------------------")
